@@ -31,6 +31,28 @@ A single declarative `script.json` configures the narration, scenes, code snippe
         └── toy_agent.py # Sample real program executed for terminal scene
 ```
 
+## Prerequisites & Auto-Bootstrap (Agent Runbook)
+
+Before running the workflow, verify environment readiness. The agent must auto-install any missing dependencies:
+1. **Python Dependencies**: If `kokoro-onnx` or `soundfile` is missing:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Model Weights**: If `models/kokoro-v1.0.onnx` or `models/voices-v1.0.bin` is missing:
+   ```bash
+   python scripts/download_models.py
+   ```
+3. **Playwright & Node**: If `node_modules` or Playwright browser is missing:
+   ```bash
+   npm install && npx playwright install chromium
+   ```
+4. **ffmpeg**: Verify `ffmpeg -version`. If missing:
+   - macOS: `brew install ffmpeg`
+   - Windows: `winget install Gyan.FFmpeg`
+   - Linux: `sudo apt install -y ffmpeg`
+
+---
+
 ## Standard Workflow
 
 When an agent or developer is asked to create a video:
