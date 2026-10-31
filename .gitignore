@@ -29,3 +29,7 @@ post_metadata.txt
 Thumbs.db
 .vscode/
 .idea/
+
+# README Assets (allow demo media)
+!assets/
+!assets/**

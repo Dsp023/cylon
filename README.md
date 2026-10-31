@@ -24,6 +24,28 @@ Traditional short-form video creation for developers is painfully manual: screen
 
 ---
 
+## 🎥 Generated Demo Short
+
+Here is a 40-second vertical short generated 100% from [`examples/demo_agent_loop/script.json`](examples/demo_agent_loop/script.json) using local Kokoro TTS, procedural audio, and deterministic DOM rendering:
+
+<p align="center">
+  <a href="assets/demo_short.mp4">
+    <img src="assets/thumbnail.jpg" alt="Watch Demo Short" width="340" style="border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+    <br/>
+    <b>▶️ Click to Watch Full Demo Video (40s MP4 with Kokoro Voice & Music)</b>
+  </a>
+</p>
+
+### Scene-by-Scene Visual Breakdown
+
+| 01. Hook Scene | 02. Architecture Loop | 03. Live Code Walkthrough |
+| :---: | :---: | :---: |
+| <img src="assets/previews/pv_0_hook.jpg" width="220" /> | <img src="assets/previews/pv_1_loop.jpg" width="220" /> | <img src="assets/previews/pv_2_code.jpg" width="220" /> |
+| **04. Real Terminal Run** | **05. Guardrails Cards** | **06. Call to Action** |
+| <img src="assets/previews/pv_3_terminal.jpg" width="220" /> | <img src="assets/previews/pv_4_cards.jpg" width="220" /> | <img src="assets/previews/pv_5_cta.jpg" width="220" /> |
+
+---
+
 ## 🏛️ Architecture Pipeline
 
 ```mermaid
