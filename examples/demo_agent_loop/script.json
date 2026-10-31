@@ -1,0 +1,71 @@
+{
+  "title": "What is an AI Agent Loop?",
+  "description": "Explaining how autonomous AI agents work under the hood using a 5-step loop.",
+  "hashtags": ["#ai", "#coding", "#softwaredevelopment", "#python", "#techshorts"],
+  "voice": "am_michael",
+  "speed": 1.05,
+  "theme": {
+    "accent": "#ff7a50",
+    "accent2": "#5aa2ff",
+    "glowA": "rgba(255,122,80,0.18)",
+    "glowB": "rgba(90,162,255,0.15)"
+  },
+  "scenes": [
+    {
+      "type": "hook",
+      "say": "An AI agent is not magic. It is just an autonomous while loop.",
+      "title": ["An AI agent is", "just a <i>while loop.</i>"],
+      "sub": "// agent architecture 101"
+    },
+    {
+      "type": "loop",
+      "say": "Every agent cycle executes five steps: Goal, Think, Act, Observe, and Done.",
+      "title": "The <i>Core Cycle</i>",
+      "nodes": ["Goal", "Think", "Act", "Observe", "Done"]
+    },
+    {
+      "type": "code",
+      "say": "In code, the agent calls an LLM, inspects tool invocations, and executes actions.",
+      "title": "The Whole <i>Idea</i>",
+      "lines": [
+        "while not task.is_done():",
+        "    plan = model.think(task, history)",
+        "    action = model.decide(plan)",
+        "    output = execute_tool(action)",
+        "    history.append(output)"
+      ],
+      "hl": [
+        [0, 1, 2, 3, 4],
+        [1],
+        [2],
+        [3],
+        [4]
+      ]
+    },
+    {
+      "type": "terminal",
+      "say": "When the agent runs, it calls tools, runs tests, and catches errors autonomously.",
+      "title": "Real <i>Execution</i>",
+      "command": "python toy_agent.py",
+      "note": "deterministic loop · real tools"
+    },
+    {
+      "type": "cards",
+      "say": "To prevent failure, you must add three guardrails: iteration limits, memory compaction, and approval gates.",
+      "title": ["Essential", "<b>Guardrails</b>"],
+      "cards": [
+        ["01", "Max Iterations", "Halts infinite loops and prevents cost spikes", "--a"],
+        ["02", "Context Compaction", "Summarizes tool output history to save tokens", "--b"],
+        ["03", "Approval Gates", "Demands confirmation before modifying critical state", "--a"]
+      ]
+    },
+    {
+      "type": "cta",
+      "say": "Now go build your own autonomous agents. Star the repository on GitHub.",
+      "title": ["Now Build", "<i>Your Own</i>"],
+      "sub": "// open-source on GitHub",
+      "pills": ["Think", "Act", "Observe", "Ship"]
+    }
+  ]
+}
+

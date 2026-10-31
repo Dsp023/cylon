@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Model weights
+models/
+*.onnx
+*.bin
+
+# Output & Render artifacts
+dist/
+renders/
+frames/
+previews/
+*.wav
+*.mp4
+tmp_*.mp4
+pv_*.jpg
+thumbnail.jpg
+data.js
+meta.json
+post_metadata.txt
+
+# Editor / System
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

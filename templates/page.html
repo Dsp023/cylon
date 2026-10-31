@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Code-Driven Shorts Renderer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --a: #ff7a50;
+      --a2: #5aa2ff;
+      --glowA: rgba(255, 122, 80, 0.18);
+      --glowB: rgba(90, 162, 255, 0.15);
+      --bg: #0b0a10;
+      --surface: rgba(255, 255, 255, 0.04);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+    body {
+      width: 720px;
+      height: 1280px;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+      position: relative;
+      user-select: none;
+    }
+
+    /* Ambient background glows */
+    .glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.85;
+    }
+    .glow-1 {
+      width: 520px;
+      height: 520px;
+      background: var(--glowA);
+      top: 150px;
+      left: -80px;
+    }
+    .glow-2 {
+      width: 560px;
+      height: 560px;
+      background: var(--glowB);
+      bottom: 250px;
+      right: -100px;
+    }
+
+    /* Subtle grid overlay */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Header watermark */
+    .brand-header {
+      position: absolute;
+      top: 54px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      z-index: 10;
+    }
+    .brand-pill {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      backdrop-filter: blur(10px);
+    }
+    .brand-pill span { color: var(--a); }
+
+    /* Scene Stage */
+    #stage {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      display: none;
+      padding: 130px 48px 300px 48px;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .zoom-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transform-origin: center center;
+    }
+
+    /* Typography */
+    .scene-title {
+      font-size: 58px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      color: #ffffff;
+    }
+    .scene-title i {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--a), var(--a2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .scene-title b {
+      font-weight: 900;
+      color: var(--a);
+    }
+    .scene-sub {
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 20px;
+      color: var(--a);
+      margin-bottom: 34px;
+      letter-spacing: 0.04em;
+    }
+
+    /* HOOK Scene */
+    .hook-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 12px;
+      background: rgba(255, 122, 80, 0.12);
+      border: 1px solid rgba(255, 122, 80, 0.3);
+      color: var(--a);
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      width: fit-content;
+    }
+    .hook-badge::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--a);
+      box-shadow: 0 0 10px var(--a);
+    }
+
+    /* LOOP Scene */
+    .loop-container {
+      position: relative;
+      width: 100%;
+      height: 480px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .loop-svg {
+      width: 100%;
+      height: 100%;
+    }
+    .loop-node-box {
+      fill: #14131c;
+      stroke: rgba(255, 255, 255, 0.12);
+      stroke-width: 2;
+      rx: 16;
+      transition: stroke 0.3s, fill 0.3s;
+    }
+    .loop-node-box.active {
+      fill: rgba(255, 122, 80, 0.18);
+      stroke: var(--a);
+      stroke-width: 3;
+      filter: drop-shadow(0 0 14px var(--a));
+    }
+    .loop-node-text {
+      fill: #f3f4f6;
+      font-size: 20px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    /* CODE Scene */
+    .code-window {
+      background: #111019;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      margin: 15px 0;
+    }
+    .code-header {
+      background: #171622;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .win-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .btn-red { background: #ff5f56; }
+    .btn-yellow { background: #ffbd2e; }
+    .btn-green { background: #27c93f; }
+    .win-title {
+      margin-left: 12px;
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .code-body {
+      padding: 24px 20px;
+      font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+      font-size: 19px;
+      line-height: 1.8;
+    }
+    .code-line {
+      display: flex;
+      padding: 3px 8px;
+      border-radius: 6px;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    .code-line.dim {
+      opacity: 0.35;
+    }
+    .code-line.hl {
+      background: rgba(255, 122, 80, 0.14);
+      border-left: 3px solid var(--a);
+      opacity: 1;
+    }
+    .line-num {
+      width: 32px;
+      color: #555;
+      user-select: none;
+    }
+    .kw { color: #ff7a50; font-weight: 700; }
+    .fn { color: #5aa2ff; }
+    .str { color: #4ade80; }
+    .cm { color: #6b7280; font-style: italic; }
+
+    /* TERMINAL Scene */
+    .term-window {
+      background: #0d0c14;
+      border: 1px solid rgba(90, 162, 255, 0.25);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      margin: 15px 0;
+    }
+    .term-body {
+      padding: 24px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+    .term-prompt { color: #5aa2ff; font-weight: 700; }
+    .term-cmd { color: #ffffff; }
+    .term-out { margin-top: 14px; }
+    .term-line { margin: 6px 0; opacity: 0; transform: translateY(4px); transition: all 0.2s; }
+    .term-line.visible { opacity: 1; transform: translateY(0); }
+    .badge-pass { color: #4ade80; font-weight: 700; }
+    .badge-fail { color: #f87171; font-weight: 700; }
+
+    /* CARDS Scene */
+    .cards-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: 15px 0;
+    }
+    .card-item {
+      background: #14131e;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      opacity: 0;
+      transform: translateY(20px) scale(0.96);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .card-item.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      border-color: rgba(255, 122, 80, 0.35);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+    .card-num {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--a);
+      background: rgba(255, 122, 80, 0.12);
+      width: 54px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      flex-shrink: 0;
+    }
+    .card-content h3 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+    .card-content p {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* STATS Scene */
+    .stat-box {
+      background: #14131e;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+      text-align: center;
+      margin: 20px 0;
+    }
+    .stat-number {
+      font-size: 88px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--a), #ffffff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    .stat-label {
+      font-size: 24px;
+      color: var(--text-muted);
+    }
+
+    /* CTA Scene */
+    .cta-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 24px 0;
+    }
+    .pill {
+      font-size: 20px;
+      font-weight: 700;
+      padding: 12px 28px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: #fff;
+      transform: scale(0.9);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+    .pill.active {
+      transform: scale(1);
+      opacity: 1;
+      border-color: var(--a);
+      background: rgba(255, 122, 80, 0.15);
+      color: var(--a);
+      box-shadow: 0 0 20px var(--glowA);
+    }
+
+    /* DYNAMIC CAPTIONS OVERLAY */
+    #captions-zone {
+      position: absolute;
+      top: 990px;
+      left: 0;
+      width: 720px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      padding: 0 40px;
+      pointer-events: none;
+    }
+    .caption-box {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px 14px;
+      background: rgba(11, 10, 16, 0.75);
+      padding: 12px 26px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .cap-word {
+      font-size: 38px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      transition: color 0.1s, transform 0.1s;
+    }
+    .cap-word.active {
+      color: var(--a);
+      transform: scale(1.08);
+      text-shadow: 0 0 20px var(--a);
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-overlay"></div>
+  <div class="glow glow-1" id="glow1"></div>
+  <div class="glow glow-2" id="glow2"></div>
+
+  <!-- Brand header removed -->
+
+  <div id="stage"></div>
+
+  <div id="captions-zone">
+    <div class="caption-box" id="captionBox"></div>
+  </div>
+
+  <!-- Loads data.js if running locally or via Playwright -->
+  <script src="data.js"></script>
+
+  <script>
+    // Safe initialization with fallback if DATA is not yet loaded
+    const defaultData = {
+      theme: { accent: "#ff7a50", accent2: "#5aa2ff", glowA: "rgba(255,122,80,0.18)", glowB: "rgba(90,162,255,0.15)" },
+      scenes: [],
+      caps: [],
+      total: 30
+    };
+    const state = (typeof DATA !== "undefined") ? DATA : defaultData;
+
+    // Apply theme
+    if (state.theme) {
+      if (state.theme.accent) document.documentElement.style.setProperty('--a', state.theme.accent);
+      if (state.theme.accent2) document.documentElement.style.setProperty('--a2', state.theme.accent2);
+      if (state.theme.glowA) document.documentElement.style.setProperty('--glowA', state.theme.glowA);
+      if (state.theme.glowB) document.documentElement.style.setProperty('--glowB', state.theme.glowB);
+    }
+
+    // Helper functions
+    function easeOutQuad(x) { return 1 - (1 - x) * (1 - x); }
+    function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+    // Format title helper
+    function renderTitle(title) {
+      if (Array.isArray(title)) return title.join("<br>");
+      return title || "";
+    }
+
+    // Syntax highlight helper for code lines
+    function syntaxHighlight(line) {
+      let l = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      l = l.replace(/\b(while|not|def|class|return|if|else|import|from|for|in|async|await)\b/g, '<span class="kw">$1</span>');
+      l = l.replace(/\b(think|decide_action|execute_tool|append|is_done|run|print)\b/g, '<span class="fn">$1</span>');
+      l = l.replace(/(".*?"|'.*?')/g, '<span class="str">$1</span>');
+      l = l.replace(/(#.*|\/\/.*)/g, '<span class="cm">$1</span>');
+      return l;
+    }
+
+    // Build DOM structure for each scene
+    const stage = document.getElementById("stage");
+
+    state.scenes.forEach((sc, idx) => {
+      const sceneEl = document.createElement("div");
+      sceneEl.className = "scene";
+      sceneEl.id = `scene-${idx}`;
+
+      const zoom = document.createElement("div");
+      zoom.className = "zoom-wrapper";
+      zoom.id = `zoom-${idx}`;
+
+      let content = "";
+      const subHtml = sc.sub ? `<div class="scene-sub">${sc.sub}</div>` : "";
+      const titleHtml = `<div class="scene-title">${renderTitle(sc.title)}</div>`;
+
+      if (sc.type === "hook") {
+        content = `
+          <div class="hook-badge">TECH DEEP DIVE</div>
+          ${titleHtml}
+          ${subHtml}
+        `;
+      } else if (sc.type === "loop") {
+        content = `
+          ${titleHtml}
+          ${subHtml}
+          <div class="loop-container">
+            <svg class="loop-svg" viewBox="0 0 620 420">
+              <defs>
+                <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="var(--a)" />
+                  <stop offset="100%" stop-color="var(--a2)" />
+                </linearGradient>
+              </defs>
+              <!-- Connecting loop track -->
+              <path id="loopTrack" d="M 310,50 L 520,170 L 440,350 L 180,350 L 100,170 Z" 
+                    fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4" stroke-dasharray="6,6" />
+              <!-- Nodes -->
+              <g id="loopNode0" class="loop-node" transform="translate(310, 50)">
+                <rect class="loop-node-box" x="-75" y="-30" width="150" height="60" />
+                <text class="loop-node-text" x="0" y="0">Goal</text>
+              </g>
+              <g id="loopNode1" class="loop-node" transform="translate(520, 170)">
+                <rect class="loop-node-box" x="-75" y="-30" width="150" height="60" />
+                <text class="loop-node-text" x="0" y="0">Think</text>
+              </g>
+              <g id="loopNode2" class="loop-node" transform="translate(440, 350)">
+                <rect class="loop-node-box" x="-75" y="-30" width="150" height="60" />
+                <text class="loop-node-text" x="0" y="0">Act</text>
+              </g>
+              <g id="loopNode3" class="loop-node" transform="translate(180, 350)">
+                <rect class="loop-node-box" x="-75" y="-30" width="150" height="60" />
+                <text class="loop-node-text" x="0" y="0">Observe</text>
+              </g>
+              <g id="loopNode4" class="loop-node" transform="translate(100, 170)">
+                <rect class="loop-node-box" x="-75" y="-30" width="150" height="60" />
+                <text class="loop-node-text" x="0" y="0">Done</text>
+              </g>
+              <!-- Orbiting Token -->
+              <circle id="orbitToken" r="10" fill="url(#orbitGrad)" filter="drop-shadow(0 0 10px var(--a))" />
+            </svg>
+          </div>
+        `;
+      } else if (sc.type === "code") {
+        const linesHtml = (sc.lines || []).map((l, lIdx) => `
+          <div class="code-line" id="line-${idx}-${lIdx}">
+            <span class="line-num">${lIdx + 1}</span>
+            <span class="line-text">${syntaxHighlight(l)}</span>
+          </div>
+        `).join("");
+
+        content = `
+          ${titleHtml}
+          ${subHtml}
+          <div class="code-window">
+            <div class="code-header">
+              <span class="win-btn btn-red"></span>
+              <span class="win-btn btn-yellow"></span>
+              <span class="win-btn btn-green"></span>
+              <span class="win-title">agent_loop.py</span>
+            </div>
+            <div class="code-body">${linesHtml}</div>
+          </div>
+        `;
+      } else if (sc.type === "terminal") {
+        const termLines = [
+          `<span class="badge-pass">[INFO]</span> Initializing autonomous worker...`,
+          `<span class="badge-pass">[TOOL]</span> Running pytest tests/test_core.py`,
+          `<span class="badge-pass">[PASS]</span> 14 passed in 0.42s`,
+          `<span class="badge-pass">[DONE]</span> Task completed successfully.`
+        ];
+        content = `
+          ${titleHtml}
+          ${subHtml}
+          <div class="term-window">
+            <div class="code-header">
+              <span class="win-btn btn-red"></span>
+              <span class="win-btn btn-yellow"></span>
+              <span class="win-btn btn-green"></span>
+              <span class="win-title">${sc.note || "terminal"}</span>
+            </div>
+            <div class="term-body">
+              <div><span class="term-prompt">$ </span><span class="term-cmd">${sc.command || "python agent.py"}</span></div>
+              <div class="term-out">
+                ${termLines.map((tl, i) => `<div class="term-line" id="tl-${idx}-${i}">${tl}</div>`).join("")}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (sc.type === "cards") {
+        const cardsHtml = (sc.cards || []).map((c, cIdx) => `
+          <div class="card-item" id="card-${idx}-${cIdx}">
+            <div class="card-num">${c[0]}</div>
+            <div class="card-content">
+              <h3>${c[1]}</h3>
+              <p>${c[2]}</p>
+            </div>
+          </div>
+        `).join("");
+
+        content = `
+          ${titleHtml}
+          ${subHtml}
+          <div class="cards-stack">${cardsHtml}</div>
+        `;
+      } else if (sc.type === "stats") {
+        content = `
+          ${titleHtml}
+          ${subHtml}
+          <div class="stat-box">
+            <div class="stat-number" id="statNum-${idx}">${sc.stat || "10x"}</div>
+            <div class="stat-label">${sc.label || "Faster Development"}</div>
+          </div>
+        `;
+      } else if (sc.type === "cta") {
+        const pillsHtml = (sc.pills || ["Think", "Act", "Observe"]).map((p, pIdx) => `
+          <div class="pill" id="pill-${idx}-${pIdx}">${p}</div>
+        `).join("");
+
+        content = `
+          ${titleHtml}
+          ${subHtml}
+          <div class="cta-pills">${pillsHtml}</div>
+        `;
+      }
+
+      zoom.innerHTML = content;
+      sceneEl.appendChild(zoom);
+      stage.appendChild(sceneEl);
+    });
+
+    // PURE FUNCTION OF TIME: setT(t)
+    window.setT = function(t) {
+      // 1. Ambient Glow Animation
+      const g1 = document.getElementById("glow1");
+      const g2 = document.getElementById("glow2");
+      if (g1) g1.style.transform = `translate(${Math.sin(t * 0.8) * 40}px, ${Math.cos(t * 0.7) * 35}px)`;
+      if (g2) g2.style.transform = `translate(${Math.cos(t * 0.9) * 45}px, ${Math.sin(t * 0.8) * 40}px)`;
+
+      // 2. Scene Updates
+      state.scenes.forEach((sc, idx) => {
+        const sceneEl = document.getElementById(`scene-${idx}`);
+        const zoomEl = document.getElementById(`zoom-${idx}`);
+        if (!sceneEl) return;
+
+        const isLastScene = idx === state.scenes.length - 1;
+        const sceneEnd = isLastScene ? state.total + 1.0 : sc.t1;
+
+        if (t < sc.t0 - 0.2 || t > sceneEnd + 0.1) {
+          sceneEl.style.display = "none";
+          return;
+        }
+
+        sceneEl.style.display = "flex";
+        const progress = clamp((t - sc.t0) / (sceneEnd - sc.t0), 0, 1);
+
+        // Smooth camera push-in
+        const scaleVal = 1 + 0.05 * progress;
+        zoomEl.style.transform = `scale(${scaleVal})`;
+
+        // Fade in / out opacity
+        let opacity = 1;
+        if (t < sc.t0 + 0.3) {
+          opacity = clamp((t - sc.t0) / 0.3, 0, 1);
+        } else if (!isLastScene && t > sc.t1 - 0.25) {
+          opacity = clamp((sc.t1 - t) / 0.25, 0, 1);
+        }
+        sceneEl.style.opacity = opacity;
+
+        // Interactive scene cue logic
+        const cues = sc.cues || [];
+
+        // Loop animation
+        if (sc.type === "loop") {
+          const track = document.getElementById("loopTrack");
+          const token = document.getElementById("orbitToken");
+          if (track && token) {
+            const pathLen = track.getTotalLength();
+            const orbitProgress = (t * 0.35) % 1.0;
+            const pt = track.getPointAtLength(orbitProgress * pathLen);
+            token.setAttribute("cx", pt.x);
+            token.setAttribute("cy", pt.y);
+          }
+          // Highlight active node based on sentence cues
+          for (let n = 0; n < 5; n++) {
+            const nodeEl = document.getElementById(`loopNode${n}`);
+            if (nodeEl) {
+              const nodeBox = nodeEl.querySelector(".loop-node-box");
+              const cueTime = cues[n] !== undefined ? cues[n] : sc.t0 + n * 1.5;
+              if (t >= cueTime) {
+                nodeBox.classList.add("active");
+              } else {
+                nodeBox.classList.remove("active");
+              }
+            }
+          }
+        }
+
+        // Code highlighting
+        if (sc.type === "code" && sc.lines) {
+          let activeHlGroup = 0;
+          cues.forEach((cueT, cIdx) => {
+            if (t >= cueT) activeHlGroup = cIdx;
+          });
+          const activeLines = (sc.hl && sc.hl[activeHlGroup]) ? sc.hl[activeHlGroup] : [];
+          sc.lines.forEach((_, lIdx) => {
+            const lineEl = document.getElementById(`line-${idx}-${lIdx}`);
+            if (lineEl) {
+              if (activeLines.includes(lIdx)) {
+                lineEl.className = "code-line hl";
+              } else {
+                lineEl.className = "code-line dim";
+              }
+            }
+          });
+        }
+
+        // Terminal reveals
+        if (sc.type === "terminal") {
+          for (let tlIdx = 0; tlIdx < 4; tlIdx++) {
+            const tlEl = document.getElementById(`tl-${idx}-${tlIdx}`);
+            if (tlEl) {
+              const appearTime = sc.t0 + 0.6 + tlIdx * 0.7;
+              if (t >= appearTime) {
+                tlEl.classList.add("visible");
+              } else {
+                tlEl.classList.remove("visible");
+              }
+            }
+          }
+        }
+
+        // Cards sequential pop
+        if (sc.type === "cards" && sc.cards) {
+          sc.cards.forEach((_, cIdx) => {
+            const cardEl = document.getElementById(`card-${idx}-${cIdx}`);
+            if (cardEl) {
+              const cardCue = cues[cIdx] !== undefined ? cues[cIdx] : sc.t0 + 0.5 + cIdx * 1.2;
+              if (t >= cardCue) {
+                cardEl.classList.add("active");
+              } else {
+                cardEl.classList.remove("active");
+              }
+            }
+          });
+        }
+
+        // CTA pills pop
+        if (sc.type === "cta" && sc.pills) {
+          sc.pills.forEach((_, pIdx) => {
+            const pillEl = document.getElementById(`pill-${idx}-${pIdx}`);
+            if (pillEl) {
+              if (t >= sc.t0 + 0.4 + pIdx * 0.35) {
+                pillEl.classList.add("active");
+              } else {
+                pillEl.classList.remove("active");
+              }
+            }
+          });
+        }
+      });
+
+      // 3. Dynamic Synchronized Captions
+      const capBox = document.getElementById("captionBox");
+      if (capBox && state.caps && state.caps.length > 0) {
+        // Find current word
+        const activeIdx = state.caps.findIndex(c => t >= c[0] && t <= c[1]);
+        if (activeIdx !== -1) {
+          // Display 3-word chunk centered around active word
+          const startChunk = Math.max(0, activeIdx - 1);
+          const endChunk = Math.min(state.caps.length, startChunk + 3);
+          const chunkWords = state.caps.slice(startChunk, endChunk);
+
+          capBox.style.display = "flex";
+          capBox.innerHTML = chunkWords.map((cw, i) => {
+            const isWordActive = (startChunk + i) === activeIdx;
+            return `<span class="cap-word ${isWordActive ? 'active' : ''}">${cw[2]}</span>`;
+          }).join("");
+        } else {
+          capBox.style.display = "none";
+        }
+      }
+    };
+
+    // Initialize at t=0
+    window.setT(0);
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,31 @@
+{
+  "name": "code-driven-shorts",
+  "version": "1.0.0",
+  "description": "Code-driven vertical short video generation framework and agent skill",
+  "main": "scripts/render.js",
+  "type": "commonjs",
+  "scripts": {
+    "setup": "python scripts/download_models.py && npx playwright install chromium",
+    "build": "python scripts/build.py",
+    "snap": "node scripts/snap.js",
+    "render": "node scripts/render.js",
+    "mux": "python scripts/mux.py"
+  },
+  "keywords": [
+    "agent-skill",
+    "claude-code",
+    "antigravity",
+    "codex",
+    "video-generation",
+    "vertical-shorts",
+    "playwright",
+    "ffmpeg",
+    "tts"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}
+
